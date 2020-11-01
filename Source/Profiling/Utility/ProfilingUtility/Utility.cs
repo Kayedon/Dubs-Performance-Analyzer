@@ -21,7 +21,7 @@ namespace Analyzer.Profiling
         public static bool displayMessages => Settings.verboseLogging;
 
 
-        public static void ClearPatchedCaches()
+        public static void ClearPatchCaches()
         {
             patchedAssemblies.Clear();
             patchedTypes.Clear();
@@ -115,6 +115,49 @@ namespace Analyzer.Profiling
             }
         }
 
+        public static string GetMethodKey(MethodInfo meth)
+        {
+            string key = "";
+
+            if (meth.ReflectedType != null) key = meth.ReflectedType.FullName + ":" + meth.Name;
+            else key = meth.DeclaringType.FullName + ":" + meth.Name;
+
+            if (!key.Contains('`') || !key.Contains(']')) return key;
+
+            // Format generics nicely.
+
+            var first = key.FirstIndexOf(c => c == '`');
+
+            var insertString = "<";
+
+            // sub string
+            var subString = key.Substring(first, (key.LastIndexOf(']') + 1) - first);
+            while (subString.Contains('['))
+            {
+                if (insertString.Length > 1) insertString += ", ";
+
+                var commaIndex = subString.FirstIndexOf(c => c == ',');
+
+                var cutOff = commaIndex;
+                while (subString[cutOff] != '.')
+                {
+                    cutOff--;
+                }
+
+                cutOff++;
+
+                insertString += subString.Substring(cutOff, commaIndex - cutOff);
+
+                subString = subString.Remove(0, subString.FirstIndexOf(c => c == ']') + 1);
+            }
+            insertString += ">";
+
+            key = key.Remove(first, (key.LastIndexOf(']') + 1) - first);
+            key = key.Insert(first, insertString);
+
+            return key;
+        }
+
         private static void Notify(string message)
         {
 #if DEBUG
@@ -161,13 +204,13 @@ namespace Analyzer.Profiling
 
             if (!method.HasMethodBody())
             {
-                Error($"Does not have a methodbody - {mKey}");
+                Warn($"Does not have a methodbody - {mKey}");
                 return false;
             }
 
             if (method.IsGenericMethod || method.ContainsGenericParameters)
             {
-                Error($"Can not currently patch generic methods - {mKey}");
+                Warn($"Can not currently patch generic methods - {mKey}");
                 return false;
             }
 
@@ -320,8 +363,9 @@ namespace Analyzer.Profiling
         {
             try
             {
-                GUIController.AddEntry(method.Name + "-int", category);
-                GUIController.SwapToEntry(method.Name + "-int");
+                var guiEntry = method.DeclaringType + ":" + method.Name + "-int";
+                GUIController.AddEntry(guiEntry, category);
+                GUIController.SwapToEntry(guiEntry);
 
                 InternalMethodUtility.PatchedInternals.Add(method);
 

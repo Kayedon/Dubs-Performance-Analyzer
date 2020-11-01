@@ -37,35 +37,38 @@ namespace Analyzer.Profiling
 
                 for (int i = 0; i < instructions.Count(); i++)
                 {
+                    if (!IsFunctionCall(instructions[i].opcode)) continue;
+                    if (!(instructions[i].operand is MethodInfo meth)) continue;
 
-                    if (IsFunctionCall(instructions[i].opcode))
-                    {
-                        if (i == 0 || instructions[i - 1].opcode != OpCodes.Constrained)
-                        {
-                            MethodInfo meth = null;
-                            try { meth = instructions[i].operand as MethodInfo; } catch { }
-                            if (meth == null) continue;
+                    // Check for constrained
+                    if (i != 0 && instructions[i - 1].opcode == OpCodes.Constrained) continue;
+                    // Make sure it is not an analyzer profiling method
+                    if (meth.DeclaringType.FullName.Contains("Analyzer.Profiling")) continue;
 
-                            var key = meth.DeclaringType.FullName + "." + meth.Name;
-                            var index = MethodInfoCache.AddMethod(key, meth);
+                    var key = Utility.GetMethodKey(meth);
+                    var index = MethodInfoCache.AddMethod(key, meth);
 
+                    var inst = MethodTransplanting.ReplaceMethodInstruction(
+                        instructions[i],
+                        key,
+                        GUIController.types[__originalMethod.DeclaringType + ":" + __originalMethod.Name + "-int"],
+                        index);
 
-                            CodeInstruction inst = MethodTransplanting.ReplaceMethodInstruction(
-                                instructions[i],
-                                key,
-                                GUIController.types[__originalMethod.Name + "-int"],
-                                index);
-
-                            instructions[i] = inst;
-                        }
-                    }
+                    instructions[i] = inst;
                 }
 
                 return instructions;
             }
             catch (Exception e)
             {
+
+#if DEBUG
                 ThreadSafeLogger.Error($"Failed to patch the internal method {__originalMethod.DeclaringType.FullName}:{__originalMethod.Name}, failed with the error " + e.Message);
+#else
+                if(Settings.verboseLogging)
+                    ThreadSafeLogger.Warning($"Failed to patch the internal method {__originalMethod.DeclaringType.FullName}:{__originalMethod.Name}, failed with the error " + e.Message);
+#endif
+
                 return codeInstructions;
             }
         }

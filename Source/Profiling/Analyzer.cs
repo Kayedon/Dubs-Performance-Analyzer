@@ -30,11 +30,13 @@ namespace Analyzer.Profiling
         private static object logicSync = new object();
 
         private static bool currentlyProfiling = false;
+        private static bool currentlyPaused = false;
 
         public static List<ProfileLog> Logs => logs;
         public static object LogicLock => logicSync;
 
-        public static bool CurrentlyPaused { get; set; } = false;
+
+        public static bool CurrentlyPaused { get => currentlyPaused; set => currentlyPaused = value; }
         public static bool CurrentlyProfiling => currentlyProfiling && !CurrentlyPaused;
 
         public static int GetCurrentLogCount => currentLogCount;
@@ -66,7 +68,7 @@ namespace Analyzer.Profiling
         }
 
         // Called a variadic amount depending on the user settings
-        // Calculates stats for all active profilers (not the currently selected one)
+        // Calculates stats for all active profilers (not only the currently selected one)
         internal static void FinishUpdateCycle()
         {
             if (ProfileController.Profiles.Count != 0)
@@ -173,29 +175,51 @@ namespace Analyzer.Profiling
 
         private static void CleanupBackground()
         {
-            CurrentlyCleaningUp = true;
+            try
+            {
+                CurrentlyCleaningUp = true;
 
-            // unpatch all methods
-            Modbase.Harmony.UnpatchAll(Modbase.Harmony.Id);
+                // unpatch all methods
+                Modbase.Harmony.UnpatchAll(Modbase.Harmony.Id);
 
-            // atomic reads and writes.
-            Modbase.isPatched = false;
+#if DEBUG 
+                ThreadSafeLogger.Warning("Unpatched all profiling methods");
+#endif
+                // atomic reads and writes.
+                Modbase.isPatched = false;
 
-            // clear all patches to prevent double patching
-            Utility.ClearPatchedCaches();
+                // clear all patches to prevent double patching
+                Utility.ClearPatchCaches();
+#if DEBUG 
+                ThreadSafeLogger.Warning("Cleared Patch Caches");
+#endif
 
-            // clear all profiles
-            ProfileController.Profiles.Clear();
+                // clear all profiles
+                ProfileController.Profiles.Clear();
+#if DEBUG 
+                ThreadSafeLogger.Warning("Cleared Profiles");
+#endif
 
-            // clear all logs
-            Analyzer.Logs.Clear();
+                // clear all logs
+                Analyzer.Logs.Clear();
+#if DEBUG 
+                ThreadSafeLogger.Warning("Cleared Logs");
+#endif
 
-            // clear all temp entries
-            GUIController.ClearEntries();
+                // clear all temp entries
+                GUIController.ClearEntries();
 
-            // call GC
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
+#if DEBUG 
+                ThreadSafeLogger.Warning("Cleared Entries");
+#endif
+                // call GC
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+            catch(Exception e)
+            {
+                ThreadSafeLogger.Error("Failed to cleanup analyzer, failed with the error " + e.Message);
+            }
 
 #if DEBUG 
             ThreadSafeLogger.Message($"Finished state cleanup");

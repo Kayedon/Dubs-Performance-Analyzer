@@ -23,6 +23,7 @@ namespace Analyzer
             public static readonly Texture2D hueMark = ContentFinder<Texture2D>.Get("DPA/UI/hueMark");
             public static readonly Texture2D hsbMark = ContentFinder<Texture2D>.Get("DPA/UI/hsbMark");
 
+            public static Texture2D Menu = ContentFinder<Texture2D>.Get("DPA/UI/MenuSett", false);
             public static Texture2D MintSearch = ContentFinder<Texture2D>.Get("DPA/UI/MintSearch", false);
             public static Texture2D DropDown = ContentFinder<Texture2D>.Get("DPA/UI/dropdown", false);
             public static Texture2D FoldUp = ContentFinder<Texture2D>.Get("DPA/UI/foldup", false);
@@ -50,13 +51,12 @@ namespace Analyzer
             // Settings
             public static string settings_wiki => "settings.wiki".TranslateSimple();
             public static string settings_discord => "settings.discord".TranslateSimple();
-            public static string settings_heading => "settings".TranslateSimple();
             public static string settings_dnspy => "settings.dnspy".TranslateSimple();
             public static string settings_updates_per_second => "settings.ups".TranslateSimple();
             public static string settings_logging => "settings.logging".TranslateSimple();
-            public static string settings_side_panel => "settings.side.panel".TranslateSimple();
             public static string settings_disable_cleanup => "settings.disable.cleanup".TranslateSimple();
             public static string settings_disable_cleanup_desc => "settings.disable.cleanup.desc".TranslateSimple();
+            public static string settings_disable_tps_counter => "settings.disable.tps.counter".TranslateSimple();
 
             // Dev Options
             public static string devoptions_input_method => "devoptions.input.method".TranslateSimple();

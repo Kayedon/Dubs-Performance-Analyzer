@@ -9,7 +9,7 @@ using Verse;
 
 namespace Analyzer.Profiling
 {
-    [Entry("entry.update.shooting", Category.Update, "entry.update.shooting.tooltip")]
+    [Entry("entry.update.shooting", Category.Update)]
     public static class H_Shooting
     {
         public static bool Active = false;
@@ -23,9 +23,6 @@ namespace Analyzer.Profiling
                 yield return m;
 
             foreach (var m in Utility.GetTypeMethods(typeof(CompProjectileInterceptor)))
-                yield return m;
-
-            foreach (var m in Utility.GetTypeMethods(typeof(Building_Turret)))
                 yield return m;
 
             foreach (var m in Utility.GetTypeMethods(typeof(Building_Turret)))

@@ -6,7 +6,7 @@ using Verse;
 
 namespace Analyzer.Profiling
 {
-    [Entry("entry.tick.stats", Category.Tick, "entry.tick.stats.tooltip")]
+    [Entry("entry.tick.stats", Category.Tick)]
     internal class H_GetStatValue
     {
         public static bool Active = false;
@@ -69,7 +69,7 @@ namespace Analyzer.Profiling
                 }
                 catch (Exception)
                 {
-                    Log.Error($"Analyzer: Failed to patch {allLeafSubclass} from {allLeafSubclass.Assembly.FullName} for profiling");
+                    ThreadSafeLogger.Error($"Failed to patch {allLeafSubclass} from {allLeafSubclass.Assembly.FullName} for profiling");
                 }
 
             }

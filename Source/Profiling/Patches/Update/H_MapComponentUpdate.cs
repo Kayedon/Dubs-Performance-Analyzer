@@ -10,14 +10,14 @@ using Verse.AI.Group;
 
 namespace Analyzer.Profiling
 {
-    [Entry("entry.update.mapcomponent", Category.Update, "entry.update.mapcomponent.tooltip")]
+    [Entry("entry.update.mapcomponent", Category.Update)]
     internal class H_MapComponentUpdate
     {
         public static bool Active = false;
 
         public static IEnumerable<MethodInfo> GetPatchMethods()
         {
-            foreach(var meth in typeof(MapComponent).AllSubclasses().Select(mc => mc.GetMethod("MapComponentUpdate")))
+            foreach (var meth in Utility.SubClassNonAbstractImplementationsOf(typeof(MapComponent), t => t.Name == "MapComponentUpdate"))
                 yield return meth;
 
             yield return AccessTools.Method(typeof(SkyManager), nameof(SkyManager.SkyManagerUpdate));

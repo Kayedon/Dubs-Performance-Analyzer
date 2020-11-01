@@ -1,9 +1,9 @@
-# How to Use
+# Basic Understanding
 
 ## Lingo
-![Lingo](About/Identification.png)
+![Lingo](About/identification_lingo.png)
 
-## Some Basic Statistics
+## Some Simple Statistics
 Rimworld's update cycle is broken up into units called *ticks*. Ticks measure the speed at which things change within the game. When you adjust the game speed in the bottom right, you increase the amount of ticks the game tries to execute per second. At 1x, it tries to reach 60 *ticks per second* (tps); at 2x, 180tps; at 3x, 360tps; and the dev mode 4x (also accessible through the Smart Speed mod), 900tps. These numbers are doubled whenever all player-controlled pawns on a map are sleeping.
 
 Time for a little math. We can see that to reach 60fps, we need each rendered frame to take less than <img src="https://render.githubusercontent.com/render/math?math=16 {2\over3}ms"> per *update* to reach 60fps. This means to reach 60fps at 3x speed, each tick needs to be *on average* below <img src="https://render.githubusercontent.com/render/math?math=2 {7\over9}ms">. Any spikes in tick length will likely cause FPS to drop, though if the spikes are irregular, it may not significantly slow down gameplay.
@@ -11,6 +11,7 @@ Time for a little math. We can see that to reach 60fps, we need each rendered fr
 The game will always try to run at 60 updates per second. However, ticks are actually independent to updates; in other words, multiple ticks can be occur within a single frame. This is the true difference between the Tick category and the other categories. The entries which are shown in the Tick category can update more or less frequently, depending on your game speed. Keep in mind that if each tick takes too long, the game will automatically throttle your TPS to stabilize your FPS.
 
 When attempting to interpret the data provided by the Analyzer, it is important to recognize which Category a given readout is coming from. An average of ~2ms in the Tick category, when adjusted for higher speeds, is worse than an average of ~3ms in any other category. 
+
 
 ## Reading the Display
 If your issue is that your FPS is inconsistent but your TPS is relatively stable, you should be focusing on the **max** value for logs. This is because large spikes in TPS can affect your FPS without consistently slowing down your game.
@@ -21,13 +22,14 @@ When looking at logs in the Row format, the coloured bar indicates the percentag
 
 The graph which pops up when selecting a log displays the a realtime view of the collective time the method is taking for a given update period. If you are in an entry in the Tick category, this update period will be one tick, otherwise it will just be a frame. The graph is useful for discerning patterns in the information, which the average/max will be able to display.
 
-## Finding the mod a method is from by using the side panel
-Finding slow logs (and the associated method) is all well and good, and useful for modders, but for a user it is not something which helps. In the settings, if you enable the `Side Panel` setting, you will be able to open a tab which looks like 
+## Finding a Mod a method is from
+Finding slow logs (and the associated method) is all well and good, and useful for modders, but for a user it is not something which helps. When you select a log, a panel will pop-up which contains information about which mod the method comes from, the dll, and some extra statistics.
 
-![Locate Mod](About/LocateMod.png)
+![Locate Mod](About/locate_mod.png)
 
-This will (if possible) show you the mod, and the assembly that the method is attributed to.
+This will (if possible) show you the mod, and the assembly that the method is attributed to. This will not always work, mods often (annoyingly) package dependent dll's in their mods, so they don't have to have an explicit dependency on another mod. This will not get picked up, and ***can*** mis-attribute the 'source' of the lag. 
 
+---
 # Basic Troubleshooting
 
 ## Common Offenders
@@ -47,23 +49,20 @@ WorkGivers are how pawns find jobs to do, a common example could be, looking thr
 ## Error when Attempting to open the Analyzer Window
 If you see the error *[Analyzer] Analyzer is currently in the process of cleaning up ...* and cannot open the window. Just wait a few seconds, this occurs because after you are finished using the Analyzer, it removes all of the profiling and hooks it has, in order to reduce the overhead it incurs on your game. This happens on a seperate thread, and does not effect gameplay at all, however depending on how many methods where profiled, the GC which is manually called after the cleanup can take a substantial amount of time. (This cleanup process does not effect the Performance patches at all).
 
+---
 # Advanced Usage
 
 ## Linking Analyzer to Dnspy
-In the analyzer settings there is checkbox that, when enabled, will 'link' dnSpy to the Analyzer. This will allow you to directly open methods from inside the Analyzer from any mod within dnSpy.
+In the analyzer settings there is checkbox that, when enabled, will 'link' dnSpy to the Analyzer. This will allow you to directly open methods from inside the Analyzer from any loaded mod within dnSpy.
 
 Provide the absolute path to (and including) the dnSpy.exe. This allows it to be accessed via command line from in game by the Analyzer.
 
-![Open in Dnspy](About/OpenInDnspy.png)
-
-[Add Gif going from in game -> dnspy]
+![Open in Dnspy](About/open_dnspy.gif)
 
 ## Internal Profiling
 You can right-click the logs themselves to internal profile the method. This will show the methods which comprise the method you are profiling and the time it takes to execute them. This will open up a new entry named 'Method-int' which can be closed by right clicking on the entry itself.
 
-![Profile Internal Method](About/ProfileInternalMethod.png)
-
-![Close Entry](About/CloseEntry.png)
+![Profile Internal Method](About/internal_meth_profilng.gif)
 
 ## Custom Profiling
 While using the Analyzer, there are a variety of ways by which methods can be profiled. These are displayed on the main dev page.
@@ -73,17 +72,22 @@ You can patch:
 - Type (All the methods inside a type)
 - Patches on a Method (All the Harmony Patches which effect a method)
 - Patches on a Type (All the Harmony Patches which effect the methods of a type)
+- Subtypes of a Type (All methods in the subtypes of a given type)
 - Method Internals (Internal method profiling on a given method)
 - Mod/Assembly (Patch all the methods implemented in an assembly)
 
-![Modders Patching](About/PatchingPage.png)
+![Modders Patching](About/custom_patching.png)
 
+## Stack Traces
+You can view where a method is being called from by using the stack trace panel (accessible from the cog on the bottom panel windows). This will show you all the unique methods which are calling the method you are profiling, keep in mind that this will slow down your game significantly, mainly due to the retrieving of the stack trace itelf.
+
+---
 # For Modders
 
 ## Exceptions
 When exceptions are thrown in a method that is being profiled, The timer will be completely ***incorrect***. This is because the Stopwatch's `Stop()` function will never be called. This could hypothetically be remedied by using a Finalizer (or a raw try-catch), but this will incur a large amount of overhead, likely slowing the game to a crawl in entries with large amounts of methods. 
 
-There is the potential of in the future making a switch which would enable you to profile while including a try-catch for specific methods. However it is more work than it is worth currently, if it is a feature you would like, you are free to implement it yourself [here](Source/Profiling/Utility/ProfilingUtility/MethodTransplanting.cs#L79-L227)
+There is the potential of in the future making a switch which would enable you to profile while including a try-catch for specific methods. However it is more work than it is worth currently, if it is a feature you would like, you are free to implement it yourself [here](Source/Profiling/Utility/ProfilingUtility/MethodTransplanting.cs#L102-L282)
 
 ## Using the Analyzer.xml
 You can create a tab in the Analyzer specifically for your mod ahead of time by creating an XML file. This saves you the work of having to repatch the same methods to profile your mod during development. The file should be formatted as follows:
@@ -159,7 +163,7 @@ The stack will, after the transpiler, look like
 011 ret 
 ```
 
-The implementation for this is [here](Source/Profiling/Utility/ProfilingUtility/MethodTransplanting.cs#L79-L227)
+The implementation for this is [here](Source/Profiling/Utility/ProfilingUtility/MethodTransplanting.cs#L102-L282)
 
 ## Technical Explanations
 
@@ -212,7 +216,7 @@ public static void Foo_runtimeReplacement(int param2, int local2)
 ```
 The `Stopwatch.Start();` above is simplified because the process here is specific to how Analyzer collects data on methods, and thus is unimportant to the example.
 
-The implementation of this is [here](Source/Profiling/Utility/ProfilingUtility/MethodTransplanting.cs#L274-L370)
+The implementation of this is [here](Source/Profiling/Utility/ProfilingUtility/MethodTransplanting.cs#L292-L393)
 
 ### Transpiler Profiling
 Transpiler profiling is done using a relatively simple approach. The IL of the original method is compared to the current IL (after all transpilers have been applied) and a diff algorithm is applied. This profiling hinges on the fact that the diff algorithm is correct (which it may not always be!), I'd greatly appreciate examples where the algorithm *incorrectly* attributes an 'Added' method when no such method was added. Or improvements to the diff algorithm itself [here](Source/Profiling/Utility/Myers.cs)

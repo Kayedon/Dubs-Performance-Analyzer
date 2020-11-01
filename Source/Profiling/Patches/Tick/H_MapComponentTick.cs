@@ -11,14 +11,14 @@ using Verse.AI.Group;
 
 namespace Analyzer.Profiling
 {
-    [Entry("entry.tick.mapcomponent", Category.Tick, "entry.tick.mapcomponent.tooltip")]
+    [Entry("entry.tick.mapcomponent", Category.Tick)]
     internal class H_MapComponentTick
     {
         public static bool Active = false;
 
         public static IEnumerable<MethodInfo> GetPatchMethods()
         {
-            foreach (var meth in Utility.SubClassImplementationsOf(typeof(MapComponent), t => t.Name == "MapComponentTick"))
+            foreach (var meth in Utility.SubClassNonAbstractImplementationsOf(typeof(MapComponent), t => t.Name == "MapComponentTick"))
                 yield return meth;
 
             yield return AccessTools.Method(typeof(WildAnimalSpawner), nameof(WildAnimalSpawner.WildAnimalSpawnerTick));
@@ -35,6 +35,7 @@ namespace Analyzer.Profiling
             yield return AccessTools.Method(typeof(FireWatcher), nameof(FireWatcher.FireWatcherTick));
 
         }
+
         public static string GetLabel(MapComponent __instance) => __instance.GetType().FullName;
     }
 }

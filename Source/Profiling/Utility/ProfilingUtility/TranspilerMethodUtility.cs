@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
+using Verse;
 
 namespace Analyzer.Profiling
 {
@@ -67,14 +68,14 @@ namespace Analyzer.Profiling
             Myers<CodeInstruction> insts = new Myers<CodeInstruction>(inst.ToArray(), modInstList.ToArray(), methComparer);
             insts.Compute();
 
-            var key = __originalMethod.DeclaringType.FullName + ":" + __originalMethod.Name;
+            var key = Utility.GetMethodKey(__originalMethod as MethodInfo);
             var index = MethodInfoCache.AddMethod(key, __originalMethod as MethodInfo);
 
             foreach (var thing in insts.changeSet)
             {
                 // We only want added methods
                 if (thing.change != ChangeType.Added) continue;
-                if (!InternalMethodUtility.IsFunctionCall(thing.value.opcode) || !(thing.value.operand is MethodInfo)) continue;
+                if (!InternalMethodUtility.IsFunctionCall(thing.value.opcode) || !(thing.value.operand is MethodInfo meth)) continue;
 
                 // swap our instruction
                 var replaceInstruction = MethodTransplanting.ReplaceMethodInstruction(
@@ -84,22 +85,18 @@ namespace Analyzer.Profiling
                     index);
 
                 // Find the place it was in our method, and replace the instruction (Optimisation Opportunity to improve this)
-                var method = thing.value.operand as MethodInfo;
-
                 for (int i = 0; i < modInstList.Count; i++)
                 {
                     var instruction = modInstList[i];
-                    if (InternalMethodUtility.IsFunctionCall(instruction.opcode))
-                    {
-                        if(instruction.operand is MethodInfo info && info.Name == method.Name)
-                        {
-                            if (instruction != replaceInstruction) modInstList[i] = replaceInstruction;
-                            break;
-                        }
-                    }
+                    if (!InternalMethodUtility.IsFunctionCall(instruction.opcode)) continue;
+                    if (!(instruction.operand is MethodInfo info) || info.Name != meth.Name) continue;
+
+
+                    if (instruction != replaceInstruction) modInstList[i] = replaceInstruction;
+                    break;
                 }
             }
-
+    
             return modInstList;
         }
 

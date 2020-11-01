@@ -41,24 +41,32 @@ namespace Analyzer.Profiling
 
             void addTab(Func<string> name, Func<string> desc, Category cat)
             {
-                tabs.Add(cat, new Tab(name, () => currentCategory = cat, () => currentCategory == cat, cat, desc));
+                tabs.Add(cat, new Tab(name, 
+                    () =>
+                    {
+                        currentCategory = cat;
+                        if (currentEntry != null)
+                        {
+                            currentEntry.SetActive(false);
+                            currentEntry = null;
+                            ResetProfilers();
+                        }
+                    }, 
+                    () => currentCategory == cat, cat, desc));
             }
         }
 
         public static void ClearEntries()
         {
-            foreach (var tab in tabs.Values)
+            var entriesToRemove = new List<string>();
+            foreach (var entry in tabs.Values.SelectMany(tab => tab.entries.Keys))
             {
-                foreach (var entry in tab.entries.Keys)
-                {
-                    if (entry.isClosable)
-                    {
-                        RemoveEntry(entry.name);
-                        continue; // already set to unpatched + inactive here
-                    }
-                    entry.isPatched = false;
-                }
+                if (entry.isClosable) entriesToRemove.Add(entry.name);
+                entry.isPatched = false;
             }
+
+            foreach(var entry in entriesToRemove)
+                RemoveEntry(entry);
         }
 
         public static void ResetToSettings()
@@ -95,7 +103,7 @@ namespace Analyzer.Profiling
                 currentEntry.PatchMethods();
             }
 
-            currentEntry.SetActive(true);
+            currentEntry.SetActive(!Analyzer.CurrentlyPaused);
             currentCategory = currentEntry.category;
             currentTab = Tab(currentCategory);
         }
@@ -116,7 +124,7 @@ namespace Analyzer.Profiling
 #if DEBUG
             ThreadSafeLogger.Message($"Adding entry {name} into the category {category}");
 #endif
-            var entry = Entry.Create(name, category, "Dynamically created entry for the type " + myType.Name, myType, true, true);
+            var entry = Entry.Create(name, category, myType, true, true);
 
             if (Tab(category).entries.ContainsKey(entry))
             {

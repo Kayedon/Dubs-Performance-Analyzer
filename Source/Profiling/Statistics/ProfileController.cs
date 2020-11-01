@@ -29,7 +29,7 @@ namespace Analyzer.Profiling
         {
             if (!Analyzer.CurrentlyProfiling) return null;
 
-            if (Profiles.TryGetValue(key, out Profiler prof)) return prof.Start();
+            if (Profiles.TryGetValue(key, out var prof)) return prof.Start();
             else
             {
                 Profiles[key] = GetLabel != null ? new Profiler(key, GetLabel(), type, def, thing, meth)
@@ -50,7 +50,7 @@ namespace Analyzer.Profiling
         public static void BeginUpdate()
         {
 #if DEBUG
-            if (!Analyzer.CurrentlyProfiling) return;
+            if (Analyzer.CurrentlyPaused) return;
 
             if (midUpdate) ThreadSafeLogger.Error("[Analyzer] Attempting to begin new update cycle when the previous update has not ended");
             midUpdate = true;

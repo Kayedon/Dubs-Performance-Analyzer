@@ -33,8 +33,9 @@ namespace Analyzer.Profiling
         private static readonly ConstructorInfo ProfilerCtor = AccessTools.Constructor(typeof(Profiler), new Type[] { typeof(string), typeof(string), typeof(Type), typeof(Def), typeof(Thing), typeof(MethodBase) });
 
         // analyzer
-        private static readonly MethodInfo Analyzer_CurrentlyPaused = AccessTools.Method(typeof(Analyzer), "get_CurrentlyPaused");
-        private static readonly MethodInfo Analyzer_CurrentlyProfiling = AccessTools.Method(typeof(Analyzer), "get_CurrentlyProfiling");
+        private static readonly MethodInfo Analyzer_Get_CurrentlyProfiling = AccessTools.Method(typeof(Analyzer), "get_CurrentlyProfiling");
+        private static readonly FieldInfo Analyzer_CurrentlyProfiling = AccessTools.Field(typeof(Analyzer), "currentlyProfiling");
+        private static readonly FieldInfo Analyzer_CurrentyPaused = AccessTools.Field(typeof(Analyzer), "currentlyPaused"); 
 
         // dictionary
         private static readonly MethodInfo Dict_Get_Value = AccessTools.Method(typeof(Dictionary<string, MethodInfo>), "get_Item");
@@ -90,7 +91,7 @@ namespace Analyzer.Profiling
                     ThreadSafeLogger.Error($"[Analyzer] Failed to patch method {meth.Name} failed with the error {e.Message}");
 #else
                     if (Settings.verboseLogging)
-                        ThreadSafeLogger.Error($"[Analyzer] Failed to patch method {meth.Name} failed with the error {e.Message}");
+                        ThreadSafeLogger.Warning($"[Analyzer] Failed to patch method {meth.DeclaringType.FullName}:{meth.Name} failed with the error {e.Message}");
 #endif
                 }
             });
@@ -111,18 +112,19 @@ namespace Analyzer.Profiling
             var curTypeMeth = curType.GetMethod("GetType", BindingFlags.Public | BindingFlags.Static);
 
 
-            string key;
-            if (__originalMethod.ReflectedType != null) key = __originalMethod.ReflectedType.FullName + ":" + __originalMethod.Name;
-            else key = __originalMethod.DeclaringType.FullName + ":" + __originalMethod.Name;
-
+            var key = Utility.GetMethodKey(__originalMethod as MethodInfo); // This translates our method into a human-legible key, I.e. Namespace.Type<Generic>:Method
             var methodKey = MethodInfoCache.AddMethod(key, __originalMethod as MethodInfo);
 
 
             // Active Check
             {
-                // if(active && Analyzer.CurrentlyProfiling)
+                // if(active && (Analyzer.CurrentlyProfiling))
                 yield return new CodeInstruction(OpCodes.Ldsfld, curType.GetField("Active", BindingFlags.Public | BindingFlags.Static));
-                yield return new CodeInstruction(OpCodes.Call, Analyzer_CurrentlyProfiling);
+
+                yield return new CodeInstruction(OpCodes.Ldsfld, Analyzer_CurrentlyProfiling); // profiling
+                yield return new CodeInstruction(OpCodes.Ldsfld, Analyzer_CurrentyPaused); // !paused
+                yield return new CodeInstruction(OpCodes.Not);
+                yield return new CodeInstruction(OpCodes.And);
 
                 yield return new CodeInstruction(OpCodes.And);
                 yield return new CodeInstruction(OpCodes.Brfalse_S, beginLabel);
@@ -197,13 +199,13 @@ namespace Analyzer.Profiling
                         yield return inst;
                 }
 
-                yield return new CodeInstruction(OpCodes.Newobj, ProfilerCtor); // ProfileController.Start();
+                yield return new CodeInstruction(OpCodes.Newobj, ProfilerCtor); // new Profiler();
                 yield return new CodeInstruction(OpCodes.Dup);
                 yield return new CodeInstruction(OpCodes.Stloc, profLocal);
             }
 
             yield return new CodeInstruction(OpCodes.Call, Profiler_Start);
-            yield return new CodeInstruction(OpCodes.Pop);
+            yield return new CodeInstruction(OpCodes.Pop); // profiler.Start returns itself
 
             { // Add to the Profilers dictionary, so we cache creation.
                 yield return new CodeInstruction(OpCodes.Ldsfld, ProfilerController_Profiles);
@@ -344,7 +346,7 @@ namespace Analyzer.Profiling
             ilGen.Emit(OpCodes.Ldsfld, type.GetField("Active", BindingFlags.Public | BindingFlags.Static));
             ilGen.Emit(OpCodes.Brfalse_S, skipLabel);
 
-            ilGen.Emit(OpCodes.Call, Analyzer_CurrentlyProfiling);
+            ilGen.Emit(OpCodes.Call, Analyzer_Get_CurrentlyProfiling);
             ilGen.Emit(OpCodes.Brfalse_S, skipLabel);
 
             ilGen.Emit(OpCodes.Ldstr, key);

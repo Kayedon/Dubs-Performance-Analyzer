@@ -47,6 +47,12 @@ namespace Analyzer
             { // Performance Patches
                 PerformancePatches.InitialisePatches();
             }
+
+#if DEBUG
+            ThreadSafeLogger.Warning("==========================================================================");
+            ThreadSafeLogger.Warning("                   Analyzer Running In Debug Mode                         ");
+            ThreadSafeLogger.Warning("==========================================================================");
+#endif
         }
 
         public override void DoSettingsWindowContents(Rect inRect)
